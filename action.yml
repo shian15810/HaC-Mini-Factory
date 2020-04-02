@@ -1,0 +1,5 @@
+name: Update drivers
+description: Update download URL and SHA-256 of drivers to latest version of release
+runs:
+  using: node12
+  main: index.js

@@ -1,0 +1,133 @@
+name: Installer Build and Release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  release:
+    types:
+      - created
+  schedule:
+    - cron: 0 */8 * * *
+
+env:
+  ARTIFACT_NAME: Installer
+  ARTIFACT_PATH: Installer/build
+  BUILD_SCRIPT_PATH: Installer/build.sh
+  CHANGELOG_NAME: CHANGELOG.md
+  DRIVER_SOURCE_PATH: Installer/data/*/source.txt
+  INSTALLER_NAME: HaCMini.pkg
+  REPOSITORY_NAME: HaC-Mini
+  REPOSITORY_OWNER: osy86
+
+jobs:
+  build_installer:
+    name: Build Installer
+    runs-on: macos-latest
+    steps:
+      - name: Set up environment variables
+        run: |
+          base_repository_full_name=$REPOSITORY_OWNER/$REPOSITORY_NAME
+          base_repository_json=$(curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$base_repository_full_name")
+          base_repository_default_branch=$(echo "$base_repository_json" | jq --raw-output .default_branch)
+          head_repository_owner=${GITHUB_REPOSITORY%%/*}
+          head_repository_full_name=$head_repository_owner/$REPOSITORY_NAME
+          head_repository_json=$(curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$head_repository_full_name")
+          head_repository_default_branch=$(echo "$head_repository_json" | jq --raw-output .default_branch)
+          compare_repositories_json=$(curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$base_repository_full_name/compare/$base_repository_default_branch...$head_repository_owner:$head_repository_default_branch")
+          compare_repositories_status=$(echo "$compare_repositories_json" | jq --raw-output .status)
+          [ "$compare_repositories_status" != ahead ] && REPOSITORY_FULL_NAME=$base_repository_full_name || REPOSITORY_FULL_NAME=$head_repository_full_name
+          echo "::set-env name=REPOSITORY_FULL_NAME::$REPOSITORY_FULL_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Checkout ${{ env.REPOSITORY_FULL_NAME }}
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.REPOSITORY_FULL_NAME }}
+          path: ${{ env.REPOSITORY_NAME }}
+      - name: Update drivers
+        uses: ./
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Installer
+        run: |
+          brew cask install packages
+          "$REPOSITORY_NAME/$BUILD_SCRIPT_PATH"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.REPOSITORY_NAME }}/${{ env.ARTIFACT_PATH }}
+  create_release:
+    name: Create Release
+    needs: build_installer
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ env.ARTIFACT_NAME }}/${{ env.INSTALLER_NAME }}
+          asset_name: ${{ env.INSTALLER_NAME }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  update_release:
+    name: Update Release
+    needs: build_installer
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) || github.event_name == 'schedule'
+    steps:
+      - name: Set up environment variables
+        run: |
+          DATE=$(date --iso-8601 --utc)
+          release_json=$(curl --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$DATE")
+          RELEASE_ID=$(echo "$release_json" | jq --raw-output .id)
+          echo "::set-env name=DATE::$DATE"
+          echo "::set-env name=RELEASE_ID::$RELEASE_ID"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+      - name: Read changelog
+        id: changelog
+        run: |
+          body=$(cat "$ARTIFACT_NAME/$CHANGELOG_NAME")
+          echo "::set-output name=body::$body"
+      - name: Delete release
+        if: env.RELEASE_ID != 'null'
+        run: |
+          curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --request DELETE --show-error --silent "https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/tags/$DATE"
+          curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --request DELETE --show-error --silent "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create release
+        id: release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ env.DATE }}
+          release_name: ${{ env.DATE }}
+          body: ${{ steps.changelog.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: ${{ env.ARTIFACT_NAME }}/${{ env.INSTALLER_NAME }}
+          asset_name: ${{ env.INSTALLER_NAME }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
