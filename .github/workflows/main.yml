@@ -28,7 +28,7 @@ jobs:
     name: Build Installer
     runs-on: macos-latest
     steps:
-      - name: Set up environment variables
+      - name: Set up env
         run: |
           base_repository_full_name=$REPOSITORY_OWNER/$REPOSITORY_NAME
           base_repository_json=$(curl --fail --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$base_repository_full_name")
@@ -43,7 +43,7 @@ jobs:
           echo "::set-env name=REPOSITORY_FULL_NAME::$REPOSITORY_FULL_NAME"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Checkout
+      - name: Checkout ${{ github.repository }}
         uses: actions/checkout@v2
       - name: Checkout ${{ env.REPOSITORY_FULL_NAME }}
         uses: actions/checkout@v2
@@ -54,7 +54,7 @@ jobs:
         uses: ./
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Installer
+      - name: Build ${{ env.INSTALLER_NAME }}
         run: |
           brew cask install packages
           "$REPOSITORY_NAME/$BUILD_SCRIPT_PATH"
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'schedule'
     steps:
-      - name: Set up environment variables
+      - name: Set up env
         run: |
           DATE=$(date --iso-8601 --utc)
           release_json=$(curl --header "Authorization: Bearer $GITHUB_TOKEN" --show-error --silent "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$DATE")
