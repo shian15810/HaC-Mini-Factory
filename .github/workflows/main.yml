@@ -1,12 +1,12 @@
-name: Installer Build and Release
+name: CI
 
 on:
   pull_request:
+    branches:
+      - master
   push:
     branches:
-      - '**'
-    tags-ignore:
-      - '**'
+      - master
   release:
     types:
       - created
@@ -67,7 +67,7 @@ jobs:
     name: Create Release
     needs: build_installer
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'created'
+    if: github.event_name == 'release'
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v1
@@ -86,7 +86,7 @@ jobs:
     name: Update Release
     needs: build_installer
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) || github.event_name == 'schedule'
+    if: github.event_name == 'push' || github.event_name == 'schedule'
     steps:
       - name: Set up environment variables
         run: |
