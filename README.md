@@ -2,7 +2,7 @@
 
 Automated build of [HaC-Mini](https://github.com/osy86/HaC-Mini) Installer (HacMini.pkg) with latest available drivers.
 
-![Installer Build and Release](https://github.com/shian15810/HaC-Mini-Factory/workflows/Installer%20Build%20and%20Release/badge.svg)
+![CI](https://github.com/shian15810/HaC-Mini-Factory/workflows/CI/badge.svg)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/shian15810/HaC-Mini-Factory)
 
 ## **⚠️ WARNING ⚠️**
