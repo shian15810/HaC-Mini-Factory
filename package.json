@@ -1,7 +1,7 @@
 {
   "name": "hac-mini-factory",
   "version": "1.0.0",
-  "description": "Automated build of HaC-Mini Installer (HacMini.pkg) with latest driver releases",
+  "description": "Automated build of HaC-Mini Installer (HacMini.pkg) with latest available drivers.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
