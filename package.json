@@ -19,7 +19,7 @@
   "private": true,
   "dependencies": {
     "@actions/core": "^1.2.3",
-    "globby": "^11.0.0",
+    "globby": "^11.0.1",
     "micromatch": "^4.0.2",
     "mkdirp": "^1.0.4",
     "node-fetch": "^2.6.0",
