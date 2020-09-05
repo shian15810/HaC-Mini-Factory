@@ -22,7 +22,7 @@
     "globby": "^11.0.0",
     "micromatch": "^4.0.2",
     "mkdirp": "^1.0.4",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "wretch": "^1.7.1"
   }
 }
